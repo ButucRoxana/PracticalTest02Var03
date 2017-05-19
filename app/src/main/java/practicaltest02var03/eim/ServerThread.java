@@ -10,16 +10,19 @@ import android.util.Log;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
 
 public class ServerThread extends Thread {
 
     private boolean isRunning;
     private int serverPort;
     private ServerSocket serverSocket;
+    private HashMap<String, String> data = null;
 
     public ServerThread(int serverPort) {
         this.isRunning = false;
         this.serverPort = serverPort;
+        this.data = new HashMap<>();
     }
 
     public void startServer() {
@@ -36,6 +39,13 @@ public class ServerThread extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+    public synchronized void setData(String word, String response) {
+        this.data.put(word, response);
+    }
+
+    public synchronized HashMap<String, String> getData() {
+        return data;
     }
 
     @Override

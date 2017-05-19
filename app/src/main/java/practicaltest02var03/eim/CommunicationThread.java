@@ -10,6 +10,10 @@ import android.util.Log;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,7 +31,6 @@ public class CommunicationThread extends Thread {
 
     private ServerThread serverThread;
     private Socket socket;
-    private HashMap<String, String> cache;
 
     public CommunicationThread(ServerThread serverThread, Socket socket) {
         this.serverThread = serverThread;
@@ -42,22 +45,33 @@ public class CommunicationThread extends Thread {
             Log.i(Constants.TAG, "[COMMUNICATION THREAD] Started...");
 
             String word = reader.readLine();
+            String response = "";
 
-            HttpClient httpClient = new DefaultHttpClient();
-            HttpGet httpGet = new HttpGet("http://services.aonaware.com/DictService/DictService.asmx/Define?word=" + word);
-            ResponseHandler responseHandler = new BasicResponseHandler();
-            String response = httpClient.execute(httpGet, responseHandler).toString();
+            if (serverThread.getData().containsKey(word)) {
+                response = serverThread.getData().get(word);
 
-//            JSONObject root = new JSONObject(response);
-//            JSONArray array = root.getJSONArray("RESULTS");
-//            String toClient = "";
-//            int len = array.length() < 8 ? array.length() : 8;
-//            for (int k = 0; k < len; k++) {
-//                JSONObject entry = array.getJSONObject(k);
-//                toClient += entry.getString("name") + "|";
-//            }
+            } else {
+                HttpClient httpClient = new DefaultHttpClient();
+                HttpGet httpGet = new HttpGet("http://services.aonaware.com/DictService/DictService.asmx/Define?word=" + word);
+                ResponseHandler responseHandler = new BasicResponseHandler();
+                response = httpClient.execute(httpGet, responseHandler).toString();
 
-            this.cache.put(word, response);
+                Document doc = Jsoup.parse(response, " ", Parser.xmlParser());
+                int nr = 0;
+                for (Element e : doc.select("WordDefinition")) {
+                    if (nr == 1) {
+                        response = e.text();
+                        nr++;
+                        serverThread.setData(word, response);
+                        break;
+                    } else {
+                        nr++;
+                    }
+                }
+            }
+
+
+//            this.cache.put(word, response);
             writer.println(response);
 
             socket.close();
